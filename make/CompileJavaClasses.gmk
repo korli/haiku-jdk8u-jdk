@@ -160,6 +160,15 @@ ifneq ($(OPENJDK_TARGET_OS),aix)
              sun/tools/attach/AixVirtualMachine.java
 endif
 
+ifneq ($(OPENJDK_TARGET_OS), haiku)
+    EXFILES += sun/nio/fs/HaikuFileStore.java \
+        sun/nio/fs/HaikuFileSystem.java \
+        sun/nio/fs/HaikuFileSystemProvider.java \
+        sun/nio/fs/HaikuNativeDispatcher.java \
+        sun/nio/fs/HaikuUserDefinedFileAttributeView.java \
+        sun/tools/attach/HaikuAttachProvider.java \
+        sun/tools/attach/HaikuVirtualMachine.java
+
 # Exclude BreakIterator classes that are just used in compile process to generate
 # data files and shouldn't go in the product
 EXFILES += sun/text/resources/BreakIteratorRules.java \
@@ -179,7 +188,7 @@ ifeq (, $(filter $(OPENJDK_TARGET_OS), windows macosx))
   EXFILES += sun/awt/AWTCharset.java
 endif
 
-ifeq ($(OPENJDK_TARGET_OS), macosx)
+ifneq (, $(filter $(OPENJDK_TARGET_OS), macosx haiku))
   # exclude all X11 on Mac, we can't exclude some like below or we'll have compilation errors
   EXCLUDES += sun/awt/X11
 else
@@ -231,7 +240,7 @@ endif
 # Exclude another implicitly not included file.
 EXFILES += sun/util/locale/AsciiUtil.java
 
-ifeq (, $(filter $(OPENJDK_TARGET_OS), solaris macosx aix))
+ifeq (, $(filter $(OPENJDK_TARGET_OS), solaris macosx aix haiku))
   #
   # only solaris, macosx and aix
   #
@@ -280,6 +289,16 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
       $(JDK_TOPDIR)/src/solaris/classes/sun/util/locale/provider/HostLocaleProviderAdapterImpl.java \
       $(JDK_TOPDIR)/src/solaris/classes/sun/nio/fs/GnomeFileTypeDetector.java \
       $(JDK_TOPDIR)/src/solaris/classes/sun/nio/ch/sctp/SctpChannelImpl.java \
+      $(JDK_TOPDIR)/src/solaris/classes/sun/nio/ch/sctp/SctpMultiChannelImpl.java \
+      $(JDK_TOPDIR)/src/solaris/classes/sun/nio/ch/sctp/SctpServerChannelImpl.java
+
+endif
+
+HAIKU_SRC_DIRS :=
+ifeq ($(OPENJDK_TARGET_OS), haiku)
+  HAIKU_SRC_DIRS += $(JDK_TOPDIR)/src/haiku/classes
+
+  EXFILES += $(JDK_TOPDIR)/src/solaris/classes/sun/nio/ch/sctp/SctpChannelImpl.java \
       $(JDK_TOPDIR)/src/solaris/classes/sun/nio/ch/sctp/SctpMultiChannelImpl.java \
       $(JDK_TOPDIR)/src/solaris/classes/sun/nio/ch/sctp/SctpServerChannelImpl.java
 

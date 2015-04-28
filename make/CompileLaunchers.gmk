@@ -60,7 +60,7 @@ endif
 # System.loadLibrary("jawt") first. This was the behaviour described in the
 # devloper documentation of JAWT and what worked with OpenJDK6.
 #
-ifneq ($(findstring $(OPENJDK_TARGET_OS), linux solaris), )
+ifneq ($(findstring $(OPENJDK_TARGET_OS), linux solaris haiku), )
   ORIGIN_ARG += $(call SET_EXECUTABLE_ORIGIN,$(ORIGIN_ROOT)/lib$(OPENJDK_TARGET_CPU_LIBDIR))
 endif
 
@@ -165,6 +165,7 @@ define SetupLauncher
           $2, \
       CFLAGS_linux := -fPIC, \
       CFLAGS_solaris := -KPIC -DHAVE_GETHRTIME, \
+      CFLAGS_haiku := -fPIC, \
       LDFLAGS := $(LDFLAGS_JDKEXE) \
           $(ORIGIN_ARG) \
           $$($1_LDFLAGS), \
@@ -173,6 +174,7 @@ define SetupLauncher
           $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX)), \
       LDFLAGS_solaris := $$($1_LDFLAGS_solaris) \
           $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX)), \
+      LDFLAGS_solaris := $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX)), \
       MAPFILE := $$($1_MAPFILE), \
       LDFLAGS_SUFFIX := $(LDFLAGS_JDKEXE_SUFFIX) $$($1_LDFLAGS_SUFFIX), \
       LDFLAGS_SUFFIX_posix := $4, \
@@ -180,6 +182,7 @@ define SetupLauncher
           $(JDK_OUTPUTDIR)/objs/libjava/java.lib advapi32.lib $5, \
       LDFLAGS_SUFFIX_linux := -L$(JDK_OUTPUTDIR)/lib$(OPENJDK_TARGET_CPU_LIBDIR)/jli -ljli $(LIBDL) -lc, \
       LDFLAGS_SUFFIX_solaris := -L$(JDK_OUTPUTDIR)/lib$(OPENJDK_TARGET_CPU_LIBDIR)/jli -ljli -lthread $(LIBDL) -lc, \
+      LDFLAGS_SUFFIX_haiku := -L$(JDK_OUTPUTDIR)/lib$(OPENJDK_TARGET_CPU_LIBDIR)/jli -ljli, \
       OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/$1_objs$(OUTPUT_SUBDIR), \
       OUTPUT_DIR := $$($1_OUTPUT_DIR_ARG)$(OUTPUT_SUBDIR), \
       PROGRAM := $1, \
@@ -477,6 +480,7 @@ $(eval $(call SetupNativeCompilation,BUILD_UNPACKEXE, \
     CFLAGS_linux := -fPIC, \
     CFLAGS_solaris := -KPIC, \
     CFLAGS_macosx := -fPIC, \
+    CFLAGS_haiku := -fPIC, \
     MAPFILE := $(UNPACK_MAPFILE),\
     LDFLAGS := $(UNPACKEXE_ZIPOBJS), \
     LDFLAGS_windows := $(CXXFLAGS_JDKEXE), \
@@ -539,6 +543,10 @@ ifeq ($(OPENJDK_TARGET_OS), solaris)
 endif
 
 ifeq ($(OPENJDK_TARGET_OS), linux)
+  BUILD_JEXEC := 1
+endif # OPENJDK_TARGET_OS
+
+ifeq ($(OPENJDK_TARGET_OS), haiku)
   BUILD_JEXEC := 1
 endif # OPENJDK_TARGET_OS
 
