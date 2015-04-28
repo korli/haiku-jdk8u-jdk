@@ -227,6 +227,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBJAVA, \
         -framework CoreFoundation \
         -framework Foundation \
         -framework Security -framework SystemConfiguration, \
+    LDFLAGS_SUFFIX_haiku := $(BUILD_LIBFDLIBM), \
     LDFLAGS_SUFFIX_windows := -export:winFileHandleOpen -export:handleLseek \
         -export:getErrorString \
         jvm.lib $(BUILD_LIBFDLIBM) $(WIN_VERIFY_LIB) \
@@ -294,6 +295,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBZIP, \
     LDFLAGS_SUFFIX_solaris := -ljvm -ljava $(LIBZ) -lc, \
     LDFLAGS_SUFFIX_aix := -ljvm -ljava $(LIBZ),\
     LDFLAGS_SUFFIX_macosx := $(LIBZ) -ljava -ljvm, \
+    LDFLAGS_SUFFIX_haiku := $(LIBZ) -ljava -ljvm, \
     VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
     RC_FLAGS := $(RC_FLAGS) \
         -D "JDK_FNAME=zip.dll" \
@@ -448,6 +450,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBJLI, \
     LDFLAGS_SUFFIX_linux := $(LIBZ) $(LIBDL) -lc -lpthread, \
     LDFLAGS_SUFFIX_aix := $(LIBZ) $(LIBDL),\
     LDFLAGS_SUFFIX_macosx := $(LIBZ), \
+    LDFLAGS_SUFFIX_haiku := $(LIBZ), \
     LDFLAGS_SUFFIX_windows := \
         -export:JLI_Launch \
         -export:JLI_ManifestIterate \

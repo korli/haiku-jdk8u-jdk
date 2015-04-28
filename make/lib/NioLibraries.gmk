@@ -130,6 +130,20 @@ ifeq ($(OPENJDK_TARGET_OS), aix)
       UnixNativeDispatcher.c
 endif
 
+ifeq ($(OPENJDK_TARGET_OS), haiku)
+  BUILD_LIBNIO_MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libnio/mapfile-$(OPENJDK_TARGET_OS)
+  BUILD_LIBNIO_FILES += \
+      InheritedChannel.c \
+      NativeThread.c \
+      PollArrayWrapper.c \
+      UnixAsynchronousServerSocketChannelImpl.c \
+      UnixAsynchronousSocketChannelImpl.c \
+      MagicFileTypeDetector.c \
+      HaikuNativeDispatcher.c \
+      UnixCopyFile.c \
+      UnixNativeDispatcher.c
+endif
+
 $(eval $(call SetupNativeCompilation,BUILD_LIBNIO, \
     LIBRARY := nio, \
     OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
@@ -146,6 +160,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBNIO, \
     LDFLAGS_SUFFIX_aix := -ljava -lnet $(LIBDL),\
     LDFLAGS_SUFFIX_solaris := -ljvm -lsocket -lposix4 $(LIBDL) \
         -lsendfile -ljava -lnet -lc, \
+    LDFLAGS_SUFIXX_haiku := -ljava -lnet, \
     LDFLAGS_SUFFIX_windows := jvm.lib ws2_32.lib $(WIN_JAVA_LIB) \
         $(JDK_OUTPUTDIR)/objs/libnet/net.lib \
         advapi32.lib, \
@@ -167,7 +182,7 @@ $(BUILD_LIBNIO): $(BUILD_LIBNET)
 
 ifeq ($(OPENJDK_TARGET_OS_API), posix)
 
-  ifeq (, $(filter $(OPENJDK_TARGET_OS), macosx aix))
+  ifeq (, $(filter $(OPENJDK_TARGET_OS), macosx aix haiku))
 
     # Suppress unused parameters required by exported JNI functions.
     SCTP_WERROR := -Werror -Wno-error=unused-parameter

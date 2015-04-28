@@ -121,10 +121,12 @@ COPY_FILES += $(PSFONTPROPFILE_TARGET_FILES)
 #
 # Copy flavormap.properties, cursor.properties and cursors gif files to LIBDIR
 #
-ifneq ($(OPENJDK_TARGET_OS), macosx)
-  OPENJDK_TARGET_OS_LIB_SRC = $(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/lib
-else
+ifeq ($(OPENJDK_TARGET_OS), macosx)
   OPENJDK_TARGET_OS_LIB_SRC = $(JDK_TOPDIR)/src/macosx/lib
+else ifeq ($(OPENJDK_TARGET_OS), haiku)
+  OPENJDK_TARGET_OS_LIB_SRC = $(JDK_TOPDIR)/src/haiku/lib
+else
+  OPENJDK_TARGET_OS_LIB_SRC = $(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/lib
 endif
 
 $(LIBDIR)/flavormap.properties: $(OPENJDK_TARGET_OS_LIB_SRC)/flavormap.properties
