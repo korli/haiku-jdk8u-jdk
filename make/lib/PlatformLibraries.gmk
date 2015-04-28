@@ -127,6 +127,29 @@ endif
 
 ##########################################################################################
 
+ifeq ($(OPENJDK_TARGET_OS), haiku)
+
+  $(eval $(call SetupNativeCompilation,BUILD_LIBHAIKUAPP, \
+      LIBRARY := haikuapp, \
+      OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
+      SRC := $(JDK_TOPDIR)/src/haiku/native/sun/haikuapp, \
+      LANG := C++, \
+      OPTIMIZATION := LOW, \
+      CFLAGS := $(CFLAGS_JDKLIB) \
+          -I$(JDK_TOPDIR)/src/haiku/native/sun/haikuapp \
+          -I$(JDK_OUTPUTDIR)/gensrc/sun/haikuapp, \
+      LDFLAGS := $(LDFLAGS_JDKLIB) \
+          $(call SET_SHARED_LIBRARY_ORIGIN), \
+      LDFLAGS_SUFFIX_haiku := -lbe $(LIBCXX), \
+      OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/libhaikuapp, \
+      DEBUG_SYMBOLS := $(DEBUG_ALL_BINARIES)))
+
+  BUILD_LIBRARIES += $(BUILD_LIBHAIKUAPP)
+
+endif
+
+##########################################################################################
+
   ifeq ($(OPENJDK_TARGET_OS), windows)
 
   ACCESSBRIDGE_SRCDIR := $(JDK_TOPDIR)/src/windows/native/sun/bridge
