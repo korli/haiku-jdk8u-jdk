@@ -27,7 +27,6 @@ package sun.lwawt;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.BufferedImage;
 import java.awt.peer.*;
 import java.util.List;
 
@@ -44,26 +43,18 @@ public class LWWindowPeer
     extends LWContainerPeer<Window, JComponent>
     implements FramePeer, DialogPeer, FullScreenCapable, DisplayChangedListener, PlatformEventNotifier
 {
-    public static enum PeerType {
+    public enum PeerType {
         SIMPLEWINDOW,
         FRAME,
         DIALOG,
         EMBEDDED_FRAME,
-        VIEW_EMBEDDED_FRAME
+        VIEW_EMBEDDED_FRAME,
+        LW_FRAME
     }
 
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.lwawt.focus.LWWindowPeer");
 
     private final PlatformWindow platformWindow;
-
-    // Window bounds reported by the native system (as opposed to
-    // regular bounds inherited from LWComponentPeer which are
-    // requested by user and may haven't been applied yet because
-    // of asynchronous requests to the windowing system)
-    private int sysX;
-    private int sysY;
-    private int sysW;
-    private int sysH;
 
     private static final int MINIMUM_WIDTH = 1;
     private static final int MINIMUM_HEIGHT = 1;
@@ -76,32 +67,22 @@ public class LWWindowPeer
     private SurfaceData surfaceData;
     private final Object surfaceDataLock = new Object();
 
-    private int backBufferCount;
-    private BufferCapabilities backBufferCaps;
-
-    // The back buffer is used for two purposes:
-    // 1. To render all the lightweight peers
-    // 2. To provide user with a BufferStrategy
-    // Need to check if a single back buffer can be used for both
-// TODO: VolatileImage
-//    private VolatileImage backBuffer;
-    private volatile BufferedImage backBuffer;
-
     private volatile int windowState = Frame.NORMAL;
 
     // check that the mouse is over the window
     private volatile boolean isMouseOver = false;
+
     // A peer where the last mouse event came to. Used by cursor manager to
     // find the component under cursor
-    private static volatile LWComponentPeer lastCommonMouseEventPeer = null;
+    private static volatile LWComponentPeer<?, ?> lastCommonMouseEventPeer;
 
     // A peer where the last mouse event came to. Used to generate
     // MOUSE_ENTERED/EXITED notifications
-    private volatile LWComponentPeer lastMouseEventPeer;
+    private volatile LWComponentPeer<?, ?> lastMouseEventPeer;
 
     // Peers where all dragged/released events should come to,
     // depending on what mouse button is being dragged according to Cocoa
-    private static LWComponentPeer mouseDownTarget[] = new LWComponentPeer[3];
+    private static final LWComponentPeer<?, ?>[] mouseDownTarget = new LWComponentPeer<?, ?>[3];
 
     // A bitmask that indicates what mouse buttons produce MOUSE_CLICKED events
     // on MOUSE_RELEASE. Click events are only generated if there were no drag
@@ -124,6 +105,8 @@ public class LWWindowPeer
 
     private final SecurityWarningWindow warningWindow;
 
+    private volatile boolean targetFocusable;
+
     /**
      * Current modal blocker or null.
      *
@@ -139,7 +122,8 @@ public class LWWindowPeer
         this.peerType = peerType;
 
         Window owner = target.getOwner();
-        LWWindowPeer ownerPeer = (owner != null) ? (LWWindowPeer)owner.getPeer() : null;
+        LWWindowPeer ownerPeer = owner == null ? null :
+             (LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(owner);
         PlatformWindow ownerDelegate = (ownerPeer != null) ? ownerPeer.getPlatformWindow() : null;
 
         // The delegate.initialize() needs a non-null GC on X11.
@@ -173,10 +157,10 @@ public class LWWindowPeer
 
         // Init warning window(for applets)
         SecurityWarningWindow warn = null;
-        if (((Window)target).getWarningString() != null) {
+        if (target.getWarningString() != null) {
             // accessSystemTray permission allows to display TrayIcon, TrayIcon tooltip
             // and TrayIcon balloon windows without a warning window.
-            if (!AWTAccessor.getWindowAccessor().isTrayIconWindow((Window)target)) {
+            if (!AWTAccessor.getWindowAccessor().isTrayIconWindow(target)) {
                 LWToolkit toolkit = (LWToolkit)Toolkit.getDefaultToolkit();
                 warn = toolkit.createSecurityWarning(target, this);
             }
@@ -188,6 +172,8 @@ public class LWWindowPeer
     @Override
     void initializeImpl() {
         super.initializeImpl();
+
+
         if (getTarget() instanceof Frame) {
             setTitle(((Frame) getTarget()).getTitle());
             setState(((Frame) getTarget()).getExtendedState());
@@ -218,6 +204,7 @@ public class LWWindowPeer
     }
 
     // Just a helper method
+    @Override
     public PlatformWindow getPlatformWindow() {
         return platformWindow;
     }
@@ -225,11 +212,6 @@ public class LWWindowPeer
     @Override
     protected LWWindowPeer getWindowPeerOrSelf() {
         return this;
-    }
-
-    @Override
-    protected void initializeContainerPeer() {
-        // No-op as LWWindowPeer doesn't have any containerPeer
     }
 
     // ---- PEER METHODS ---- //
@@ -250,7 +232,7 @@ public class LWWindowPeer
         if (warningWindow != null) {
             warningWindow.dispose();
         }
-        destroyBuffers();
+
         platformWindow.dispose();
         super.disposeImpl();
     }
@@ -260,19 +242,19 @@ public class LWWindowPeer
         if (!visible && warningWindow != null) {
             warningWindow.setVisible(false, false);
         }
-
+        updateFocusableWindowState();
         super.setVisibleImpl(visible);
         // TODO: update graphicsConfig, see 4868278
         platformWindow.setVisible(visible);
         if (isSimpleWindow()) {
             KeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
-
             if (visible) {
                 if (!getTarget().isAutoRequestFocus()) {
                     return;
                 } else {
                     requestWindowFocus(CausedFocusEvent.Cause.ACTIVATION);
                 }
+            // Focus the owner in case this window is focused.
             } else if (kfmPeer.getCurrentFocusedWindow() == getTarget()) {
                 // Transfer focus to the owner.
                 LWWindowPeer owner = getOwnerFrameDialog(LWWindowPeer.this);
@@ -284,8 +266,10 @@ public class LWWindowPeer
     }
 
     @Override
-    public GraphicsConfiguration getGraphicsConfiguration() {
-        return graphicsConfig;
+    public final GraphicsConfiguration getGraphicsConfiguration() {
+        synchronized (getStateLock()) {
+            return graphicsConfig;
+        }
     }
 
     @Override
@@ -311,66 +295,6 @@ public class LWWindowPeer
     }
 
     @Override
-    public void createBuffers(int numBuffers, BufferCapabilities caps)
-        throws AWTException
-    {
-        try {
-            // Assume this method is never called with numBuffers <= 1, as 0 is
-            // unsupported, and 1 corresponds to a SingleBufferStrategy which
-            // doesn't depend on the peer. Screen is considered as a separate
-            // "buffer", that's why numBuffers - 1
-            assert numBuffers > 1;
-
-            replaceSurfaceData(numBuffers - 1, caps, false);
-        } catch (InvalidPipeException z) {
-            throw new AWTException(z.toString());
-        }
-    }
-
-    @Override
-    public final Image getBackBuffer() {
-        synchronized (getStateLock()) {
-            return backBuffer;
-        }
-    }
-
-    @Override
-    public void flip(int x1, int y1, int x2, int y2,
-                     BufferCapabilities.FlipContents flipAction)
-    {
-        final BufferedImage buffer = (BufferedImage)getBackBuffer();
-        if (buffer == null) {
-            throw new IllegalStateException("Buffers have not been created");
-        }
-        final Graphics g = getGraphics();
-        try {
-            g.drawImage(buffer, x1, y1, x2, y2, x1, y1, x2, y2, null);
-        } finally {
-            g.dispose();
-        }
-        if (flipAction == BufferCapabilities.FlipContents.BACKGROUND) {
-            final Graphics2D bg = (Graphics2D) buffer.getGraphics();
-            try {
-                bg.setBackground(getBackground());
-                bg.clearRect(0, 0, buffer.getWidth(), buffer.getHeight());
-            } finally {
-                bg.dispose();
-            }
-        }
-    }
-
-    @Override
-    public final void destroyBuffers() {
-        final Image oldBB = getBackBuffer();
-        synchronized (getStateLock()) {
-            backBuffer = null;
-        }
-        if (oldBB != null) {
-            oldBB.flush();
-        }
-    }
-
-    @Override
     public void setBounds(int x, int y, int w, int h, int op) {
 
         if((op & NO_EMBEDDED_CHECK) == 0 && getPeerType() == PeerType.VIEW_EMBEDDED_FRAME) {
@@ -385,31 +309,48 @@ public class LWWindowPeer
             op |= SET_SIZE;
         }
 
+        // Don't post ComponentMoved/Resized and Paint events
+        // until we've got a notification from the delegate
+        Rectangle cb = constrainBounds(x, y, w, h);
+
+        Rectangle newBounds = new Rectangle(getBounds());
+        if ((op & (SET_LOCATION | SET_BOUNDS)) != 0) {
+            newBounds.x = cb.x;
+            newBounds.y = cb.y;
+        }
+        if ((op & (SET_SIZE | SET_BOUNDS)) != 0) {
+            newBounds.width = cb.width;
+            newBounds.height = cb.height;
+        }
+        // Native system could constraint bounds, so the peer wold be updated in the callback
+        platformWindow.setBounds(newBounds.x, newBounds.y, newBounds.width, newBounds.height);
+    }
+
+    public Rectangle constrainBounds(Rectangle bounds) {
+        return constrainBounds(bounds.x, bounds.y, bounds.width, bounds.height);
+    }
+
+    public Rectangle constrainBounds(int x, int y, int w, int h) {
+
         if (w < MINIMUM_WIDTH) {
             w = MINIMUM_WIDTH;
         }
+
         if (h < MINIMUM_HEIGHT) {
             h = MINIMUM_HEIGHT;
         }
 
-        if (graphicsConfig instanceof TextureSizeConstraining) {
-            final int maxW = ((TextureSizeConstraining)graphicsConfig).getMaxTextureWidth();
-            final int maxH = ((TextureSizeConstraining)graphicsConfig).getMaxTextureHeight();
+        final int maxW = getLWGC().getMaxTextureWidth();
+        final int maxH = getLWGC().getMaxTextureHeight();
 
-            if (w > maxW) {
-                w = maxW;
-            }
-            if (h > maxH) {
-                h = maxH;
-            }
+        if (w > maxW) {
+            w = maxW;
+        }
+        if (h > maxH) {
+            h = maxH;
         }
 
-        // Don't post ComponentMoved/Resized and Paint events
-        // until we've got a notification from the delegate
-        setBounds(x, y, w, h, op, false, false);
-        // Get updated bounds, so we don't have to handle 'op' here manually
-        Rectangle r = getBounds();
-        platformWindow.setBounds(r.x, r.y, r.width, r.height);
+        return new Rectangle(x, y, w, h);
     }
 
     @Override
@@ -457,14 +398,16 @@ public class LWWindowPeer
 
     @Override
     public void updateFocusableWindowState() {
+        targetFocusable = getTarget().isFocusableWindow();
         platformWindow.updateFocusableWindowState();
     }
 
     @Override
     public void setModalBlocked(Dialog blocker, boolean blocked) {
         synchronized (getPeerTreeLock()) {
-            if(blocked && blocker.getPeer() instanceof LWWindowPeer) {
-                this.blocker = (LWWindowPeer)blocker.getPeer();
+            ComponentPeer peer =  AWTAccessor.getComponentAccessor().getPeer(blocker);
+            if (blocked && (peer instanceof LWWindowPeer)) {
+                this.blocker = (LWWindowPeer) peer;
             } else {
                 this.blocker = null;
             }
@@ -484,21 +427,14 @@ public class LWWindowPeer
             min = new Dimension(MINIMUM_WIDTH, MINIMUM_HEIGHT);
         }
 
-        final int maxW, maxH;
-        if (graphicsConfig instanceof TextureSizeConstraining) {
-            maxW = ((TextureSizeConstraining)graphicsConfig).getMaxTextureWidth();
-            maxH = ((TextureSizeConstraining)graphicsConfig).getMaxTextureHeight();
-        } else {
-            maxW = maxH = Integer.MAX_VALUE;
-        }
-
         final Dimension max;
         if (getTarget().isMaximumSizeSet()) {
             max = getTarget().getMaximumSize();
-            max.width = Math.min(max.width, maxW);
-            max.height = Math.min(max.height, maxH);
+            max.width = Math.min(max.width, getLWGC().getMaxTextureWidth());
+            max.height = Math.min(max.height, getLWGC().getMaxTextureHeight());
         } else {
-            max = new Dimension(maxW, maxH);
+            max = new Dimension(getLWGC().getMaxTextureWidth(),
+                                getLWGC().getMaxTextureHeight());
         }
 
         platformWindow.setSizeConstraints(min.width, min.height, max.width, max.height);
@@ -507,6 +443,12 @@ public class LWWindowPeer
     @Override
     public void updateIconImages() {
         getPlatformWindow().updateIconImages();
+    }
+
+    @Override
+    public void setBackground(final Color c) {
+        super.setBackground(c);
+        updateOpaque();
     }
 
     @Override
@@ -541,6 +483,7 @@ public class LWWindowPeer
         textured = isTextured;
     }
 
+    @Override
     public final boolean isTranslucent() {
         synchronized (getStateLock()) {
             /*
@@ -620,7 +563,8 @@ public class LWWindowPeer
     public void blockWindows(List<Window> windows) {
         //TODO: LWX will probably need some collectJavaToplevels to speed this up
         for (Window w : windows) {
-            WindowPeer wp = (WindowPeer)w.getPeer();
+            WindowPeer wp =
+                    (WindowPeer) AWTAccessor.getComponentAccessor().getPeer(w);
             if (wp != null) {
                 wp.setModalBlocked((Dialog)getTarget(), true);
             }
@@ -665,7 +609,7 @@ public class LWWindowPeer
      * be repainted.
      */
     @Override
-    public final void notifyExpose(final Rectangle r) {
+    public void notifyExpose(final Rectangle r) {
         repaintPeer(r);
     }
 
@@ -676,18 +620,11 @@ public class LWWindowPeer
      * top-level windows.
      */
     @Override
-    public final void notifyReshape(int x, int y, int w, int h) {
-        final boolean moved;
-        final boolean resized;
+    public void notifyReshape(int x, int y, int w, int h) {
+        Rectangle oldBounds = getBounds();
         final boolean invalid = updateInsets(platformWindow.getInsets());
-        synchronized (getStateLock()) {
-            moved = (x != sysX) || (y != sysY);
-            resized = (w != sysW) || (h != sysH);
-            sysX = x;
-            sysY = y;
-            sysW = w;
-            sysH = h;
-        }
+        final boolean moved = (x != oldBounds.x) || (y != oldBounds.y);
+        final boolean resized = (w != oldBounds.width) || (h != oldBounds.height);
 
         // Check if anything changed
         if (!moved && !resized && !invalid) {
@@ -700,6 +637,7 @@ public class LWWindowPeer
         final boolean isNewDevice = updateGraphicsDevice();
         if (resized || isNewDevice) {
             replaceSurfaceData();
+            updateMinimumSize();
         }
 
         // Third, COMPONENT_MOVED/COMPONENT_RESIZED/PAINT events
@@ -777,7 +715,7 @@ public class LWWindowPeer
         // TODO: fill "bdata" member of AWTEvent
         Rectangle r = getBounds();
         // findPeerAt() expects parent coordinates
-        LWComponentPeer targetPeer = findPeerAt(r.x + x, r.y + y);
+        LWComponentPeer<?, ?> targetPeer = findPeerAt(r.x + x, r.y + y);
 
         if (id == MouseEvent.MOUSE_EXITED) {
             isMouseOver = false;
@@ -786,8 +724,7 @@ public class LWWindowPeer
                     Point lp = lastMouseEventPeer.windowToLocal(x, y,
                             this);
                     Component target = lastMouseEventPeer.getTarget();
-                    postMouseEnteredExitedEvent(target, MouseEvent.MOUSE_EXITED,
-                            when, modifiers, lp,
+                    postMouseExitedEvent(target, when, modifiers, lp,
                             screenX, screenY, clickCount, popupTrigger, button);
                 }
 
@@ -799,13 +736,13 @@ public class LWWindowPeer
                 }
                 lastMouseEventPeer = null;
             }
-        } else if (id == MouseEvent.MOUSE_ENTERED) {
+        } else if(id == MouseEvent.MOUSE_ENTERED) {
             isMouseOver = true;
             if (targetPeer != null) {
                 if (targetPeer.isEnabled()) {
                     Point lp = targetPeer.windowToLocal(x, y, this);
                     Component target = targetPeer.getTarget();
-                    postMouseEnteredExitedEvent(target, MouseEvent.MOUSE_ENTERED, when, modifiers, lp,
+                    postMouseEnteredEvent(target, when, modifiers, lp,
                             screenX, screenY, clickCount, popupTrigger, button);
                 }
                 lastCommonMouseEventPeer = targetPeer;
@@ -843,6 +780,14 @@ public class LWWindowPeer
                     mouseClickButtons |= eventButtonMask;
                 }
 
+                // The window should be focused on mouse click. If it gets activated by the native platform,
+                // this request will be no op. It will take effect when:
+                // 1. A simple not focused window is clicked.
+                // 2. An active but not focused owner frame/dialog is clicked.
+                // The mouse event then will trigger a focus request "in window" to the component, so the window
+                // should gain focus before.
+                requestWindowFocus(CausedFocusEvent.Cause.MOUSE_EVENT);
+
                 mouseDownTarget[targetIdx] = targetPeer;
             } else if (id == MouseEvent.MOUSE_DRAGGED) {
                 // Cocoa dragged event has the information about which mouse
@@ -873,18 +818,11 @@ public class LWWindowPeer
 
             Point lp = targetPeer.windowToLocal(x, y, this);
             if (targetPeer.isEnabled()) {
-                if (id == MouseEvent.MOUSE_ENTERED || id == MouseEvent.MOUSE_EXITED) {
-                    postMouseEnteredExitedEvent(targetPeer.getTarget(), id,
-                            when, modifiers, lp, screenX, screenY,
-                            clickCount, popupTrigger, button);
-
-                } else {
-                    MouseEvent event = new MouseEvent(targetPeer.getTarget(), id,
+                MouseEvent event = new MouseEvent(targetPeer.getTarget(), id,
                                                   when, modifiers, lp.x, lp.y,
                                                   screenX, screenY, clickCount,
                                                   popupTrigger, button);
-                    postEvent(event);
-                }
+                postEvent(event);
             }
 
             if (id == MouseEvent.MOUSE_RELEASED) {
@@ -904,8 +842,9 @@ public class LWWindowPeer
 
     private void generateMouseEnterExitEventsForComponents(long when,
             int button, int x, int y, int screenX, int screenY,
-            int modifiers, int clickCount, boolean popupTriger,
-            LWComponentPeer targetPeer) {
+            int modifiers, int clickCount, boolean popupTrigger,
+            final LWComponentPeer<?, ?> targetPeer) {
+
         if (!isMouseOver || targetPeer == lastMouseEventPeer) {
             return;
         }
@@ -914,30 +853,44 @@ public class LWWindowPeer
         if (lastMouseEventPeer != null && lastMouseEventPeer.isEnabled()) {
             Point oldp = lastMouseEventPeer.windowToLocal(x, y, this);
             Component target = lastMouseEventPeer.getTarget();
-            postMouseEnteredExitedEvent(target, MouseEvent.MOUSE_EXITED, when, modifiers,
-                    oldp, screenX, screenY, clickCount, popupTriger, button);
+            postMouseExitedEvent(target, when, modifiers, oldp, screenX, screenY,
+                    clickCount, popupTrigger, button);
         }
         lastCommonMouseEventPeer = targetPeer;
         lastMouseEventPeer = targetPeer;
 
-        // Genrate Mouse Enter for Componetns
+        // Generate Mouse Enter for components
         if (targetPeer != null && targetPeer.isEnabled()) {
             Point newp = targetPeer.windowToLocal(x, y, this);
             Component target = targetPeer.getTarget();
-            postMouseEnteredExitedEvent(target, MouseEvent.MOUSE_ENTERED, when, modifiers,
-                    newp, screenX, screenY, clickCount, popupTriger, button);
+            postMouseEnteredEvent(target, when, modifiers, newp, screenX, screenY, clickCount, popupTrigger, button);
         }
     }
 
-    private void postMouseEnteredExitedEvent(
-            Component target, int id, long when, int modifiers,
-            Point loc, int xAbs, int yAbs,
-            int clickCount, boolean popupTrigger, int button) {
+    private void postMouseEnteredEvent(Component target, long when, int modifiers,
+                                       Point loc, int xAbs, int yAbs,
+                                       int clickCount, boolean popupTrigger, int button) {
 
         updateSecurityWarningVisibility();
 
-        postEvent(new MouseEvent(target, id, when, modifiers, loc.x, loc.y,
-                xAbs, yAbs, clickCount, popupTrigger, button));
+        postEvent(new MouseEvent(target,
+                MouseEvent.MOUSE_ENTERED,
+                when, modifiers,
+                loc.x, loc.y, xAbs, yAbs,
+                clickCount, popupTrigger, button));
+    }
+
+    private void postMouseExitedEvent(Component target, long when, int modifiers,
+                                      Point loc, int xAbs, int yAbs,
+                                      int clickCount, boolean popupTrigger, int button) {
+
+        updateSecurityWarningVisibility();
+
+        postEvent(new MouseEvent(target,
+                MouseEvent.MOUSE_EXITED,
+                when, modifiers,
+                loc.x, loc.y, xAbs, yAbs,
+                clickCount, popupTrigger, button));
     }
 
     @Override
@@ -949,7 +902,7 @@ public class LWWindowPeer
         // TODO: could we just use the last mouse event target here?
         Rectangle r = getBounds();
         // findPeerAt() expects parent coordinates
-        final LWComponentPeer targetPeer = findPeerAt(r.x + x, r.y + y);
+        final LWComponentPeer<?, ?> targetPeer = findPeerAt(r.x + x, r.y + y);
         if (targetPeer == null || !targetPeer.isEnabled()) {
             return;
         }
@@ -983,9 +936,14 @@ public class LWWindowPeer
                 focusOwner = this.getTarget();
             }
         }
-        postEvent(new KeyEvent(focusOwner, id, when, modifiers, keyCode, keyChar, keyLocation));
-    }
 
+        KeyEvent keyEvent = new KeyEvent(focusOwner, id, when, modifiers,
+            keyCode, keyChar, keyLocation);
+        AWTAccessor.getKeyEventAccessor().setExtendedKeyCode(keyEvent,
+                (keyChar == KeyEvent.CHAR_UNDEFINED) ? keyCode
+                : ExtendedKeyCodes.getExtendedKeyCodeForChar(keyChar));
+        postEvent(keyEvent);
+    }
 
     // ---- UTILITY METHODS ---- //
 
@@ -1006,6 +964,7 @@ public class LWWindowPeer
             AWTAccessor.getFrameAccessor().setExtendedState(
                     (Frame)getTarget(), newWindowState);
         }
+
         WindowEvent stateChangedEvent = new WindowEvent(getTarget(),
                 WindowEvent.WINDOW_STATE_CHANGED,
                 windowState, newWindowState);
@@ -1078,7 +1037,9 @@ public class LWWindowPeer
 
     @Override
     public final void displayChanged() {
-        updateGraphicsDevice();
+        if (updateGraphicsDevice()) {
+            updateMinimumSize();
+        }
         // Replace surface unconditionally, because internal state of the
         // GraphicsDevice could be changed.
         replaceSurfaceData();
@@ -1103,21 +1064,10 @@ public class LWWindowPeer
         replaceSurfaceData(true);
     }
 
-    private void replaceSurfaceData(boolean blit) {
-        replaceSurfaceData(backBufferCount, backBufferCaps, blit);
-    }
-
-    private void replaceSurfaceData(int newBackBufferCount,
-                                    BufferCapabilities newBackBufferCaps,
-                                    boolean blit) {
+    private void replaceSurfaceData(final boolean blit) {
         synchronized (surfaceDataLock) {
             final SurfaceData oldData = getSurfaceData();
             surfaceData = platformWindow.replaceSurfaceData();
-            // TODO: volatile image
-    //        VolatileImage oldBB = backBuffer;
-            BufferedImage oldBB = backBuffer;
-            backBufferCount = newBackBufferCount;
-            backBufferCaps = newBackBufferCaps;
             final Rectangle size = getSize();
             if (getSurfaceData() != null && oldData != getSurfaceData()) {
                 clearBackground(size.width, size.height);
@@ -1131,35 +1081,6 @@ public class LWWindowPeer
                 // TODO: drop oldData for D3D/WGL pipelines
                 // This can only happen when this peer is being created
                 oldData.flush();
-            }
-
-            // TODO: volatile image
-    //        backBuffer = (VolatileImage)delegate.createBackBuffer();
-            backBuffer = (BufferedImage) platformWindow.createBackBuffer();
-            if (backBuffer != null) {
-                Graphics g = backBuffer.getGraphics();
-                try {
-                    Rectangle r = getBounds();
-                    if (g instanceof Graphics2D) {
-                        ((Graphics2D) g).setComposite(AlphaComposite.Src);
-                    }
-                    g.setColor(nonOpaqueBackground);
-                    g.fillRect(0, 0, r.width, r.height);
-                    if (g instanceof SunGraphics2D) {
-                       ((SunGraphics2D) g).constrain(0, 0, r.width, r.height, getRegion());
-                    }
-                    if (!isTextured()) {
-                        g.setColor(getBackground());
-                        g.fillRect(0, 0, r.width, r.height);
-                    }
-                    if (oldBB != null) {
-                        // Draw the old back buffer to the new one
-                        g.drawImage(oldBB, 0, 0, null);
-                        oldBB.flush();
-                    }
-                } finally {
-                    g.dispose();
-                }
             }
         }
         flushOnscreenGraphics();
@@ -1181,14 +1102,6 @@ public class LWWindowPeer
                           size.width, size.height);
             }
         }
-    }
-
-    public int getBackBufferCount() {
-        return backBufferCount;
-    }
-
-    public BufferCapabilities getBackBufferCaps() {
-        return backBufferCaps;
     }
 
     /**
@@ -1221,7 +1134,7 @@ public class LWWindowPeer
      * In case of a simple window, triggers appropriate java focus change.
      */
     public boolean requestWindowFocus(CausedFocusEvent.Cause cause) {
-        if (focusLog.isLoggable(PlatformLogger.FINE)) {
+        if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine("requesting native focus to " + this);
         }
 
@@ -1234,8 +1147,11 @@ public class LWWindowPeer
             return false;
         }
 
-        Window currentActive = KeyboardFocusManager.
-            getCurrentKeyboardFocusManager().getActiveWindow();
+        AppContext targetAppContext = AWTAccessor.getComponentAccessor().getAppContext(getTarget());
+        KeyboardFocusManager kfm = AWTAccessor.getKeyboardFocusManagerAccessor()
+                .getCurrentKeyboardFocusManager(targetAppContext);
+        Window currentActive = kfm.getActiveWindow();
+
 
         Window opposite = LWKeyboardFocusManagerPeer.getInstance().
             getCurrentFocusedWindow();
@@ -1247,15 +1163,16 @@ public class LWWindowPeer
             // If owner is not natively active, request native
             // activation on it w/o sending events up to java.
             if (owner != null && !owner.platformWindow.isActive()) {
-                if (focusLog.isLoggable(PlatformLogger.FINE)) {
+                if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
                     focusLog.fine("requesting native focus to the owner " + owner);
                 }
-                LWWindowPeer currentActivePeer = (currentActive != null ?
-                    (LWWindowPeer)currentActive.getPeer() : null);
+                LWWindowPeer currentActivePeer = currentActive == null ? null :
+                (LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(
+                        currentActive);
 
                 // Ensure the opposite is natively active and suppress sending events.
                 if (currentActivePeer != null && currentActivePeer.platformWindow.isActive()) {
-                    if (focusLog.isLoggable(PlatformLogger.FINE)) {
+                    if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
                         focusLog.fine("the opposite is " + currentActivePeer);
                     }
                     currentActivePeer.skipNextFocusChange = true;
@@ -1280,20 +1197,20 @@ public class LWWindowPeer
         return platformWindow.requestWindowFocus();
     }
 
-    private boolean focusAllowedFor() {
+    protected boolean focusAllowedFor() {
         Window window = getTarget();
         // TODO: check if modal blocked
         return window.isVisible() && window.isEnabled() && isFocusableWindow();
     }
 
     private boolean isFocusableWindow() {
-        boolean focusable = getTarget().isFocusableWindow();
+        boolean focusable  = targetFocusable;
         if (isSimpleWindow()) {
             LWWindowPeer ownerPeer = getOwnerFrameDialog(this);
             if (ownerPeer == null) {
                 return false;
             }
-            return focusable && ownerPeer.getTarget().isFocusableWindow();
+            return focusable && ownerPeer.targetFocusable;
         }
         return focusable;
     }
@@ -1301,6 +1218,11 @@ public class LWWindowPeer
     public boolean isSimpleWindow() {
         Window window = getTarget();
         return !(window instanceof Dialog || window instanceof Frame);
+    }
+
+    @Override
+    public void emulateActivation(boolean activate) {
+        changeFocusedWindow(activate, null);
     }
 
     private boolean isOneOfOwnersOf(LWWindowPeer peer) {
@@ -1317,8 +1239,8 @@ public class LWWindowPeer
     /*
      * Changes focused window on java level.
      */
-    private void changeFocusedWindow(boolean becomesFocused, Window opposite) {
-        if (focusLog.isLoggable(PlatformLogger.FINE)) {
+    protected void changeFocusedWindow(boolean becomesFocused, Window opposite) {
+        if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine((becomesFocused?"gaining":"loosing") + " focus window: " + this);
         }
         if (skipNextFocusChange) {
@@ -1333,7 +1255,7 @@ public class LWWindowPeer
         if (becomesFocused) {
             synchronized (getPeerTreeLock()) {
                 if (blocker != null) {
-                    if (focusLog.isLoggable(PlatformLogger.FINEST)) {
+                    if (focusLog.isLoggable(PlatformLogger.Level.FINEST)) {
                         focusLog.finest("the window is blocked by " + blocker);
                     }
                     return;
@@ -1347,7 +1269,9 @@ public class LWWindowPeer
         if (!becomesFocused &&
             (isGrabbing() || this.isOneOfOwnersOf(grabbingWindow)))
         {
-            focusLog.fine("ungrabbing on " + grabbingWindow);
+            if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
+                focusLog.fine("ungrabbing on " + grabbingWindow);
+            }
             // ungrab a simple window if its owner looses activation.
             grabbingWindow.ungrab();
         }
@@ -1356,7 +1280,7 @@ public class LWWindowPeer
         kfmPeer.setCurrentFocusedWindow(becomesFocused ? getTarget() : null);
 
         int eventID = becomesFocused ? WindowEvent.WINDOW_GAINED_FOCUS : WindowEvent.WINDOW_LOST_FOCUS;
-        WindowEvent windowEvent = new WindowEvent(getTarget(), eventID, opposite);
+        WindowEvent windowEvent = new TimedWindowEvent(getTarget(), eventID, opposite, System.currentTimeMillis());
 
         // TODO: wrap in SequencedEvent
         postEvent(windowEvent);
@@ -1372,7 +1296,8 @@ public class LWWindowPeer
         while (owner != null && !(owner instanceof Frame || owner instanceof Dialog)) {
             owner = owner.getOwner();
         }
-        return owner != null ? (LWWindowPeer)owner.getPeer() : null;
+        return owner == null ? null :
+               (LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(owner);
     }
 
     /**
@@ -1400,11 +1325,13 @@ public class LWWindowPeer
         }
     }
 
+    @Override
     public void enterFullScreenMode() {
         platformWindow.enterFullScreenMode();
         updateSecurityWarningVisibility();
     }
 
+    @Override
     public void exitFullScreenMode() {
         platformWindow.exitFullScreenMode();
         updateSecurityWarningVisibility();
