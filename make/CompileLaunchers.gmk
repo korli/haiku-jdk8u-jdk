@@ -174,7 +174,8 @@ define SetupLauncher
           $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX)), \
       LDFLAGS_solaris := $$($1_LDFLAGS_solaris) \
           $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX)), \
-      LDFLAGS_solaris := $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX)), \
+      LDFLAGS_haiku := $$($1_LDFLAGS_haiku) \
+          $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX)), \
       MAPFILE := $$($1_MAPFILE), \
       LDFLAGS_SUFFIX := $(LDFLAGS_JDKEXE_SUFFIX) $$($1_LDFLAGS_SUFFIX), \
       LDFLAGS_SUFFIX_posix := $4, \
@@ -213,6 +214,8 @@ endef
 XLIBS := $(X_LIBS) -lX11
 ifeq ($(OPENJDK_TARGET_OS), macosx)
   DPACKAGEPATH := -DPACKAGE_PATH='"$(PACKAGE_PATH)"'
+  XLIBS :=
+else ifeq ($(OPENJDK_TARGET_OS), haiku)
   XLIBS :=
 endif
 
