@@ -47,6 +47,8 @@ endif
 LIBATTACH_SRC_FILES := $(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/native/sun/tools/attach
 ifeq ($(OPENJDK_TARGET_OS),aix)
   LIBATTACH_SRC_FILES += $(JDK_TOPDIR)/src/aix/native/sun/tools/attach
+else ifeq ($(OPENJDK_TARGET_OS), haiku)
+  LIBATTACH_SRC_FILES += $(JDK_TOPDIR)/src/haiku/native/sun/tools/attach
 endif
 
 $(eval $(call SetupNativeCompilation,BUILD_LIBATTACH, \
