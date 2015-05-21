@@ -110,7 +110,9 @@ int main(int argc, const char* argv[]) {
     emit_inet("StandardSocketOptions.IP_MULTICAST_LOOP", IPPROTO_IP,     IP_MULTICAST_LOOP);
 
 #ifdef AF_INET6
+#ifndef __HAIKU__
     emit_inet6("StandardSocketOptions.IP_TOS",            IPPROTO_IPV6,  IPV6_TCLASS);
+#endif
     emit_inet6("StandardSocketOptions.IP_MULTICAST_IF",   IPPROTO_IPV6,  IPV6_MULTICAST_IF);
     emit_inet6("StandardSocketOptions.IP_MULTICAST_TTL",  IPPROTO_IPV6,  IPV6_MULTICAST_HOPS);
     emit_inet6("StandardSocketOptions.IP_MULTICAST_LOOP", IPPROTO_IPV6,  IPV6_MULTICAST_LOOP);

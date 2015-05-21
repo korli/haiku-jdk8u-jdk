@@ -135,6 +135,12 @@ struct my_group_source_req {
 
 #endif
 
+#ifdef __HAIKU__
+
+#define IPV6_ADD_MEMBERSHIP     IPV6_JOIN_GROUP
+#define IPV6_DROP_MEMBERSHIP    IPV6_LEAVE_GROUP
+
+#endif
 
 #define COPY_INET6_ADDRESS(env, source, target) \
     (*env)->GetByteArrayRegion(env, source, 0, 16, target)
