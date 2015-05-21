@@ -49,7 +49,7 @@ Java_java_util_prefs_FileSystemPreferences_chmod(JNIEnv *env,
     return (jint) result;
 }
 
-#if defined(_ALLBSD_SOURCE)
+#if defined(_ALLBSD_SOURCE) || defined(__HAIKU__)
 typedef struct flock FLOCK;
 #else
 typedef struct flock64 FLOCK;
@@ -94,7 +94,7 @@ Java_java_util_prefs_FileSystemPreferences_lockFile0(JNIEnv *env,
     if (fd < 0) {
         result[0] = 0;
     } else {
-#if defined(_ALLBSD_SOURCE)
+#if defined(_ALLBSD_SOURCE) || defined(__HAIKU__)
         rc = fcntl(fd, F_SETLK, &fl);
 #else
         rc = fcntl(fd, F_SETLK64, &fl);
@@ -129,7 +129,7 @@ Java_java_util_prefs_FileSystemPreferences_unlockFile0(JNIEnv *env,
     fl.l_start = 0;
     fl.l_type = F_UNLCK;
 
-#if defined(_ALLBSD_SOURCE)
+#if defined(_ALLBSD_SOURCE) || defined(__HAIKU__)
     rc = fcntl(fd, F_SETLK, &fl);
 #else
     rc = fcntl(fd, F_SETLK64, &fl);
