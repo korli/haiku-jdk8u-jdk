@@ -320,10 +320,15 @@ ifeq ($(OPENJDK_TARGET_OS), aix)
   BUILD_LIBHPROF_AIX_EXTRA_CFLAGS += -I$(JDK_TOPDIR)/src/aix/porting
 endif
 
+BUILD_LIBHPROF_POSIX_LIBS := -ldl
+ifeq ($(OPENJDK_TARGET_OS), haiku)
+  BUILD_LIBHPROF_POSIX_LIBS =
+endif
+
 $(eval $(call SetupJVMTIDemo,hprof, java_crw_demo, \
     -I$(JDK_TOPDIR)/src/share/npt -I$(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/npt \
-    $(BUILD_LIBHPROF_AIX_EXTRA_CFLAGS), C, \
-    -ldl, ws2_32.lib winmm.lib, -lsocket -lnsl, -lpthread, $(BUILD_LIBHPROF_AIX_EXTRA_SRC)))
+    $(BUILD_LIBHPROF_AIX_EXTRA_CFLAGS), C, $(BUILD_LIBHPROF_POSIX_LIBS), \
+    ws2_32.lib winmm.lib, -lsocket -lnsl, -lpthread, $(BUILD_LIBHPROF_AIX_EXTRA_SRC)))
 
 $(eval $(call SetupJVMTIDemo,minst, agent_util java_crw_demo))
 $(eval $(call SetupJVMTIDemo,mtrace, agent_util java_crw_demo))
