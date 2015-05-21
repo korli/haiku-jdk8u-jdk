@@ -128,7 +128,6 @@ ifneq ($(OPENJDK_TARGET_OS), linux)
       sun/nio/fs/LinuxFileStore.java \
       sun/nio/fs/LinuxFileSystem.java \
       sun/nio/fs/LinuxFileSystemProvider.java \
-      sun/nio/fs/MagicFileTypeDetector.java \
       sun/nio/fs/LinuxNativeDispatcher.java \
       sun/nio/fs/LinuxUserDefinedFileAttributeView.java \
       sun/nio/fs/LinuxWatchService.java
@@ -161,13 +160,18 @@ ifneq ($(OPENJDK_TARGET_OS),aix)
 endif
 
 ifneq ($(OPENJDK_TARGET_OS), haiku)
-    EXFILES += sun/nio/fs/HaikuFileStore.java \
-        sun/nio/fs/HaikuFileSystem.java \
-        sun/nio/fs/HaikuFileSystemProvider.java \
-        sun/nio/fs/HaikuNativeDispatcher.java \
-        sun/nio/fs/HaikuUserDefinedFileAttributeView.java \
-        sun/tools/attach/HaikuAttachProvider.java \
-        sun/tools/attach/HaikuVirtualMachine.java
+  EXFILES += sun/nio/fs/HaikuFileStore.java \
+      sun/nio/fs/HaikuFileSystem.java \
+      sun/nio/fs/HaikuFileSystemProvider.java \
+      sun/nio/fs/HaikuNativeDispatcher.java \
+      sun/nio/fs/HaikuUserDefinedFileAttributeView.java \
+      sun/tools/attach/HaikuAttachProvider.java \
+      sun/tools/attach/HaikuVirtualMachine.java
+endif
+
+ifeq (, $(filter $(OPENJDK_TARGET_OS), linux haiku))
+  EXFILES += sun/nio/fs/MagicFileTypeDetector.java
+endif
 
 # Exclude BreakIterator classes that are just used in compile process to generate
 # data files and shouldn't go in the product
@@ -348,6 +352,7 @@ $(eval $(call SetupJavaCompilation,BUILD_JDK,\
         $(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/classes \
         $(MACOSX_SRC_DIRS) \
         $(AIX_SRC_DIRS) \
+        $(HAIKU_SRC_DIRS) \
         $(JDK_OUTPUTDIR)/gensrc \
         $(JDK_OUTPUTDIR)/gensrc_no_srczip \
         $(CLOSED_SRC_DIRS),\
