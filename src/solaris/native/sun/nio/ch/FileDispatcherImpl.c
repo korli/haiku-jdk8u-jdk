@@ -38,7 +38,7 @@
 #include <sys/ioctl.h>
 #endif
 
-#if defined(_ALLBSD_SOURCE)
+#if defined(_ALLBSD_SOURCE) || defined(__HAIKU__)
 #define lseek64 lseek
 #define stat64 stat
 #define flock64 flock
