@@ -304,7 +304,7 @@ SplashUpdate(Splash* splash) {
 
 void
 SplashReconfigure(Splash* splash) {
-       WINDOW(splash)->PostMessage(kReconfigure);
+    WINDOW(splash)->PostMessage(kReconfigure);
 }
 
 }
