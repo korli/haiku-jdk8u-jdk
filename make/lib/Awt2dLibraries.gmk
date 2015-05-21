@@ -41,7 +41,7 @@ ifeq ($(OPENJDK_TARGET_CPU_BITS), 64)
   BUILD_LIBMLIB_CFLAGS += -DMLIB_OS64BIT
 endif
 
-ifneq ($(OPENJDK_TARGET_OS), windows)
+ifeq (, $(findstring $(OPENJDK_TARGET_OS), windows haiku))
   BUILD_LIBMLIB_LDLIBS += $(LIBM) $(LIBDL)
 endif
 
@@ -512,7 +512,7 @@ BUILD_LIBRARIES += $(BUILD_LIBAWT)
 
 ##########################################################################################
 
-ifeq ($(findstring $(OPENJDK_TARGET_OS),windows macosx),)
+ifeq ($(findstring $(OPENJDK_TARGET_OS),windows macosx haiku),)
   ifndef BUILD_HEADLESS_ONLY
 
     LIBAWT_XAWT_DIRS := \
@@ -756,8 +756,8 @@ BUILD_LIBRARIES += $(BUILD_LIBJPEG)
 ##########################################################################################
 
 ifeq ($(BUILD_HEADLESS), true)
-  # Mac and Windows only use the native AWT lib, do not build libawt_headless
-  ifeq ($(findstring $(OPENJDK_TARGET_OS), windows macosx),)
+  # Mac, Windows and Haiku only use the native AWT lib, do not build libawt_headless
+  ifeq ($(findstring $(OPENJDK_TARGET_OS), windows macosx haiku),)
 
     LIBAWT_HEADLESS_DIRS := $(JDK_TOPDIR)/src/share/native/sun/font \
         $(JDK_TOPDIR)/src/share/native/sun/java2d/opengl \
@@ -1142,10 +1142,12 @@ ifndef BUILD_HEADLESS_ONLY
     GIFLIB_CFLAGS := -I$(JDK_TOPDIR)/src/share/native/sun/awt/giflib
   endif
 
-  ifneq ($(OPENJDK_TARGET_OS), macosx)
-    LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/native/sun/awt/splashscreen
-  else
+  ifeq ($(OPENJDK_TARGET_OS), macosx)
     LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/macosx/native/sun/awt/splashscreen
+  else ifeq ($(OPENJDK_TARGET_OS), haiku)
+    LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/haiku/native/sun/awt/splashscreen
+  else
+    LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/native/sun/awt/splashscreen
   endif
 
   LIBSPLASHSCREEN_CFLAGS := -DSPLASHSCREEN -DPNG_NO_MMX_CODE \
@@ -1167,6 +1169,10 @@ ifndef BUILD_HEADLESS_ONLY
 
   else ifeq ($(OPENJDK_TARGET_OS), windows)
     LIBSPLASHSCREEN_CFLAGS += -DWITH_WIN32
+  else ifeq ($(OPENJDK_TARGET_OS), haiku)
+    LIBSPLASHSCREEN_CFLAGS += -DWITH_HAIKU \
+        -I$(JDK_TOPDIR)/src/haiku/native/sun/awt/splashscreen \
+        -I$(JDK_TOPDIR)/src/haiku/native/sun/haikuapp
   else
     LIBSPLASHSCREEN_CFLAGS += -DWITH_X11 $(X_CFLAGS)
   endif
@@ -1186,6 +1192,8 @@ ifndef BUILD_HEADLESS_ONLY
         -framework JavaNativeFoundation
   else ifeq ($(OPENJDK_TARGET_OS), windows)
     LIBSPLASHSCREEN_LDFLAGS_SUFFIX += kernel32.lib user32.lib gdi32.lib delayimp.lib -DELAYLOAD:user32.dll
+  else ifeq ($(OPENJDK_TARGET_OS), haiku)
+    LIBSPLASHSCREEN_LDFLAGS_SUFFIX += -lbe
   else
     LIBSPLASHSCREEN_LDFLAGS_SUFFIX += $(X_LIBS) -lX11 -lXext $(LIBM) -lpthread
   endif
@@ -1215,6 +1223,8 @@ ifndef BUILD_HEADLESS_ONLY
 
   ifeq ($(OPENJDK_TARGET_OS), macosx)
     $(LIBSPLASHSCREEN): $(INSTALL_LIBRARIES_HERE)/$(LIBRARY_PREFIX)osxapp$(SHARED_LIBRARY_SUFFIX)
+  else ifeq ($(OPENJDK_TARGET_OS), haiku)
+    $(LIBSPLASHSCREEN): $(INSTALL_LIBRARIES_HERE)/$(LIBRARY_PREFIX)haikuapp$(SHARED_LIBRARY_SUFFIX)
   endif
 
 endif
@@ -1431,5 +1441,47 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
   $(BUILD_LIBOSXUI): $(BUILD_LIBAWT_LWAWT)
 
   #$(BUILD_LIBOSXUI): $(BUILD_LIBJAVA)
+
+endif
+
+##########################################################################################
+
+ifeq ($(OPENJDK_TARGET_OS), haiku)
+
+  LIBAWT_LWAWT_DIRS := \
+      $(JDK_TOPDIR)/src/haiku/native/sun/hawt
+
+  $(eval $(call SetupNativeCompilation,BUILD_LIBAWT_LWAWT, \
+      LIBRARY := awt_lwawt, \
+      OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
+      SRC := $(LIBAWT_LWAWT_DIRS), \
+      LANG := C++, \
+      OPTIMIZATION := LOW, \
+      CFLAGS := $(CFLAGS_JDKLIB) \
+          $(foreach dir, $(LIBAWT_LWAWT_DIRS), -I$(dir)) \
+          -I$(JDK_TOPDIR)/src/haiku/native/sun/haikuapp \
+          -I$(JDK_TOPDIR)/src/share/native/sun/java2d \
+          -I$(JDK_TOPDIR)/src/solaris/native/sun/java2d \
+          -I$(JDK_TOPDIR)/src/share/native/sun/awt/image \
+          -I$(JDK_TOPDIR)/src/share/native/sun/awt/image/cvutils \
+          -I$(JDK_TOPDIR)/src/share/native/sun/java2d/loops \
+          -I$(JDK_TOPDIR)/src/share/native/sun/java2d/pipe \
+          -I$(JDK_TOPDIR)/src/share/native/sun/awt/debug, \
+      LDFLAGS := $(LDFLAGS_JDKLIB) \
+          $(call SET_SHARED_LIBRARY_ORIGIN), \
+      LDFLAGS_SUFFIX_macosx := -lawt -lmlib_image -lhaikuapp -ljvm \
+          -ljava -lbe, \
+      OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/libawt_lwawt, \
+      DEBUG_SYMBOLS := $(DEBUG_ALL_BINARIES)))
+
+  BUILD_LIBRARIES += $(BUILD_LIBAWT_LWAWT)
+
+  $(BUILD_LIBAWT_LWAWT): $(BUILD_LIBAWT)
+
+  $(BUILD_LIBAWT_LWAWT): $(BUILD_LIBMLIB_IMAGE)
+
+  $(BUILD_LIBAWT_LWAWT): $(BUILD_LIBHAIKUAPP)
+
+  $(BUILD_LIBAWT_LWAWT): $(BUILD_LIBJAVA)
 
 endif
