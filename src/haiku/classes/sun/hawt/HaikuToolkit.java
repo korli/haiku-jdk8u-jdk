@@ -37,6 +37,7 @@ import java.awt.peer.*;
 import java.util.*;
 import java.util.logging.*;
 import sun.awt.*;
+import sun.awt.datatransfer.DataTransferer;
 import sun.lwawt.*;
 import sun.lwawt.LWWindowPeer.PeerType;
 
@@ -55,7 +56,6 @@ public class HaikuToolkit extends LWToolkit {
 
     public HaikuToolkit() {
         super();
-        SunToolkit.setDataTransfererClassName("sun.hawt.HaikuDataTransferer");
         nativeInit();
     }
 
@@ -85,6 +85,11 @@ public class HaikuToolkit extends LWToolkit {
     @Override
     protected PlatformComponent createPlatformComponent() {
         return new HaikuPlatformComponent();
+    }
+
+    @Override
+    protected PlatformComponent createLwPlatformComponent() {
+        return new HaikuPlatformLWComponent();
     }
 
     @Override
@@ -200,6 +205,16 @@ public class HaikuToolkit extends LWToolkit {
     }
 
     @Override
+    public DataTransferer getDataTransferer() {
+        return HaikuDataTransferer.getInstanceImpl();
+    }
+
+    @Override
+    public boolean isAlwaysOnTopSupported() {
+        return true;
+    }
+
+    @Override
     public boolean isTraySupported() {
         return false;
     }
@@ -264,11 +279,6 @@ public class HaikuToolkit extends LWToolkit {
     }
 
     @Override
-    public boolean isDesktopSupported() {
-        return true;
-    }
-
-    @Override
     protected DesktopPeer createDesktopPeer(Desktop target) {
         return new HaikuDesktopPeer();
     }
@@ -278,13 +288,6 @@ public class HaikuToolkit extends LWToolkit {
         HaikuGraphicsConfig config =
                 HaikuGraphicsConfig.getDefaultConfiguration();
         return (int)((HaikuGraphicsDevice)config.getDevice()).getScreenResolution();
-    }
-
-    @Override
-    public ColorModel getColorModel() throws HeadlessException {
-        HaikuGraphicsConfig config =
-                HaikuGraphicsConfig.getDefaultConfiguration();
-        return config.getColorModel();
     }
 
     @Override
