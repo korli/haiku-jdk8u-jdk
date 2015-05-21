@@ -332,17 +332,6 @@ public class HaikuPlatformWindow implements PlatformWindow {
         return surfaceData;
     }
 
-    @Override
-    public Image createBackBuffer() {
-        Rectangle r = peer.getBounds();
-        Image im = null;
-        if (!r.isEmpty()) {
-            int transparency = (!peer.isTranslucent() ? Transparency.OPAQUE : Transparency.TRANSLUCENT);
-            im = peer.getGraphicsConfiguration().createCompatibleImage(r.width, r.height, transparency);
-        }
-        return im;
-    }
-
     public ColorModel getColorModel() {
         return getGraphicsConfiguration().getColorModel();
     }
@@ -488,12 +477,6 @@ public class HaikuPlatformWindow implements PlatformWindow {
     public FontMetrics getFontMetrics(Font f) {
         (new RuntimeException("unimplemented")).printStackTrace();
         return null;
-    }
-
-    @Override
-    public void flip(int x1, int y1, int x2, int y2,
-            BufferCapabilities.FlipContents flipAction) {
-        (new RuntimeException("unimplemented")).printStackTrace();
     }
 
     @Override

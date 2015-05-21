@@ -190,8 +190,8 @@ public class HaikuDataTransferer extends DataTransferer {
      * platform-specific image data in the given format into an Image.
      */
     @Override
-    protected Image platformImageBytesOrStreamToImage(InputStream stream,
-            byte[] bytes, long format) throws IOException {
+    protected Image platformImageBytesToImage(byte[] bytes, long format)
+            throws IOException {
         String mimeType = null;
         if (format == FORMAT_PNG) {
             mimeType = "image/png";
@@ -211,7 +211,7 @@ public class HaikuDataTransferer extends DataTransferer {
             }
         }
         if (mimeType != null) {
-            return standardImageBytesOrStreamToImage(stream, bytes, mimeType);
+            return standardImageBytesToImage(bytes, mimeType);
         } else {
             String nativeFormat = getNativeForFormat(format);
             throw new IOException("Translation from " + nativeFormat +
