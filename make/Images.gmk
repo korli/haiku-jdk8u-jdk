@@ -396,7 +396,7 @@ ifneq ($(OPENJDK_TARGET_OS), windows)
     MAN1_SUBDIR = man
   endif
   ifeq ($(OPENJDK_TARGET_OS), haiku)
-    MAN_SRC_DIR = $(MAN_SRC_BASEDIR)/haiku/doc
+    MAN_SRC_DIR = $(MAN_SRC_BASEDIR)/linux/doc
     MAN1_SUBDIR = man
   endif
 
