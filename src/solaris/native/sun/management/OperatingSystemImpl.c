@@ -455,8 +455,7 @@ Java_sun_management_OperatingSystemImpl_getOpenFileDescriptorCount
 #elif defined(__HAIKU__)
     long i, fds = 0;
     long maxfds =
-        Java_com_sun_management_UnixOperatingSystem_getMaxFileDescriptorCount
-        (env, mbean);
+        Java_sun_management_OperatingSystemImpl_getMaxFileDescriptorCount(env, mbean);
 
     for (i = 0; i < maxfds; i++) {
         if (fcntl(i, F_GETFD, 0) == 0 || errno != EBADF) {
