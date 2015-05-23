@@ -73,6 +73,12 @@ ifeq ($(OPENJDK_TARGET_OS), aix)
   GENDATA_FONT_CONFIG_SRC_PREFIX := aix.
 endif
 
+ifeq ($(OPENJDK_TARGET_OS), haiku)
+  GENDATA_FONT_CONFIG_SRC_DIR := \
+      $(JDK_TOPDIR)/src/haiku/classes/sun/awt/fontconfigs
+  GENDATA_FONT_CONFIG_SRC_FILES := fontconfig.properties
+  GENDATA_FONT_CONFIG_SRC_PREFIX := haiku.
+endif
 ###
 
 $(GENDATA_FONT_CONFIG_DST)/%.src: \

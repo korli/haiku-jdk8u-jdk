@@ -160,7 +160,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBNIO, \
     LDFLAGS_SUFFIX_aix := -ljava -lnet $(LIBDL),\
     LDFLAGS_SUFFIX_solaris := -ljvm -lsocket -lposix4 $(LIBDL) \
         -lsendfile -ljava -lnet -lc, \
-    LDFLAGS_SUFIXX_haiku := -ljava -lnet, \
+    LDFLAGS_SUFFIX_haiku := -ljava -lnet -lnetwork -lgnu, \
     LDFLAGS_SUFFIX_windows := jvm.lib ws2_32.lib $(WIN_JAVA_LIB) \
         $(JDK_OUTPUTDIR)/objs/libnet/net.lib \
         advapi32.lib, \
