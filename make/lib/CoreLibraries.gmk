@@ -237,7 +237,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBJAVA, \
         -framework CoreFoundation \
         -framework Foundation \
         -framework Security -framework SystemConfiguration, \
-    LDFLAGS_SUFFIX_haiku := $(BUILD_LIBFDLIBM), \
+    LDFLAGS_SUFFIX_haiku := $(BUILD_LIBFDLIBM) -lbe, \
     LDFLAGS_SUFFIX_windows := -export:winFileHandleOpen -export:handleLseek \
         -export:getErrorString \
         jvm.lib $(BUILD_LIBFDLIBM) $(WIN_VERIFY_LIB) \
@@ -562,6 +562,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBNPT, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
     LDFLAGS_macosx := -liconv, \
+    LDFLAGS_haiku := -liconv, \
     LDFLAGS_SUFFIX_windows := -export:nptInitialize -export:nptTerminate, \
     LDFLAGS_SUFFIX_solaris := -lc, \
     VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
