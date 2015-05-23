@@ -106,7 +106,7 @@ ServerClassMachineImpl(void) {
 
 #endif /* __solaris__ */
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__HAIKU__)
 
 /*
  * A utility method for asking the CPU about itself.
