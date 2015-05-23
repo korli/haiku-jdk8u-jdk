@@ -322,7 +322,7 @@ endif
 
 BUILD_LIBHPROF_POSIX_LIBS := -ldl
 ifeq ($(OPENJDK_TARGET_OS), haiku)
-  BUILD_LIBHPROF_POSIX_LIBS =
+  BUILD_LIBHPROF_POSIX_LIBS := -lnetwork
 endif
 
 $(eval $(call SetupJVMTIDemo,hprof, java_crw_demo, \
