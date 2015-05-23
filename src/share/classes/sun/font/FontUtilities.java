@@ -50,6 +50,8 @@ public final class FontUtilities {
 
     public static boolean isMacOSX;
 
+    public static boolean isHaiku;
+
     public static boolean isSolaris8;
 
     public static boolean isSolaris9;
@@ -79,6 +81,8 @@ public final class FontUtilities {
                 isLinux = osName.startsWith("Linux");
 
                 isMacOSX = osName.contains("OS X"); // TODO: MacOSX
+
+                isHaiku = osName.startsWith("Haiku");
 
                 String t2kStr = System.getProperty("sun.java2d.font.scaler");
                 if (t2kStr != null) {
