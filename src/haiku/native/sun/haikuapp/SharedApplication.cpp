@@ -65,7 +65,8 @@ private:
 SharedApplication::SharedApplication(const char* signature)
     :
     BApplication(signature),
-    fReady(false)
+    fReady(false),
+    fEnv(NULL)
 {
     pthread_mutex_init(&fWaitMutex, NULL);
     pthread_cond_init(&fWaitCond, NULL);
