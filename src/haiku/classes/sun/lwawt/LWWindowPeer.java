@@ -749,7 +749,7 @@ public class LWWindowPeer
                 lastMouseEventPeer = targetPeer;
             }
         } else {
-           generateMouseEnterExitEventsForComponents(when, button, x, y,
+            generateMouseEnterExitEventsForComponents(when, button, x, y,
                     screenX, screenY, modifiers, clickCount, popupTrigger,
                     targetPeer);
 
