@@ -279,6 +279,11 @@ public class HaikuToolkit extends LWToolkit {
     }
 
     @Override
+    public int getMenuShortcutKeyMask() {
+        return Event.ALT_MASK;
+    }
+
+    @Override
     protected DesktopPeer createDesktopPeer(Desktop target) {
         return new HaikuDesktopPeer();
     }
