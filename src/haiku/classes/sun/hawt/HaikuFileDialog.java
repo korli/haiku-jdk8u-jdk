@@ -41,7 +41,8 @@ class HaikuFileDialog implements FileDialogPeer {
         initIDs();
     }
 
-    private FileDialog target;
+    private final FileDialog target;
+    private boolean done;
 
     private native static void initIDs();
     private native void nativeShowDialog(String title, boolean saveMode,
@@ -49,6 +50,7 @@ class HaikuFileDialog implements FileDialogPeer {
 
     HaikuFileDialog(FileDialog target) {
         this.target = target;
+        this.done = false;
     }
 
     @Override
@@ -57,14 +59,18 @@ class HaikuFileDialog implements FileDialogPeer {
     }
 
     private void run() {
+        if (done) {
+            throw new IllegalStateException("FileDialog can only run once");
+        }
+
         boolean saveMode = target.getMode() == FileDialog.SAVE;
 
         String title = target.getTitle();
         if (title == null) {
             if (saveMode) {
-            	title = "Save";
+                title = "Save";
             } else {
-            	title = "Open";
+                title = "Open";
             }
         }
 
@@ -87,7 +93,6 @@ class HaikuFileDialog implements FileDialogPeer {
      * if the file should be filtered out.
      */
     private boolean acceptFile(String filename) {
-
         FilenameFilter filter = target.getFilenameFilter();
         if (filter == null)
             return true;
@@ -106,33 +111,45 @@ class HaikuFileDialog implements FileDialogPeer {
      * closed.
      */
     private void done(String[] filenames) {
+        // We get another B_CANCEL message when the dialog closes, even after
+        // a save or open, so we ignore it.
+        if (done) {
+            return;
+        }
+
+        done = true;
+
         String directory = null;
         String file = null;
         File[] files = null;
 
-        if (filenames != null) {
-            // the dialog wasn't cancelled
-            int count = filenames.length;
-            files = new File[count];
-            for (int i = 0; i < count; i++) {
-                files[i] = new File(filenames[i]);
+        try {
+            if (filenames != null) {
+                // the dialog wasn't cancelled
+                int count = filenames.length;
+                files = new File[count];
+                for (int i = 0; i < count; i++) {
+                    files[i] = new File(filenames[i]);
+                }
+            
+                directory = files[0].getParent();
+                // make sure directory always ends in '/'
+                if (!directory.endsWith(File.separator)) {
+                    directory = directory + File.separator;
+                }
+            
+                file = files[0].getName(); // pick any file
             }
-
-            directory = files[0].getParent();
-            // make sure directory always ends in '/'
-            if (!directory.endsWith(File.separator)) {
-                directory = directory + File.separator;
-            }
-
-            file = files[0].getName(); // pick any file
+            
+            // store results back in component
+            AWTAccessor.FileDialogAccessor accessor = AWTAccessor.getFileDialogAccessor();
+            accessor.setDirectory(target, directory);
+            accessor.setFile(target, file);
+            accessor.setFiles(target, files);
+        } finally {
+            target.dispose();
         }
 
-        // store results back in component
-        AWTAccessor.FileDialogAccessor accessor = AWTAccessor.getFileDialogAccessor();
-        accessor.setDirectory(target, directory);
-        accessor.setFile(target, file);
-        accessor.setFiles(target, files);
-        
         // The native resources are already disposed
     }
 
