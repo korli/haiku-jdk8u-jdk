@@ -96,11 +96,15 @@ ApplicationFilter::_HandleFileMessage(BMessage* msg)
 	status_t found = msg->FindPointer("panel", (void**)&panel);
 	assert(found == B_OK && panel != NULL);
 
-	delete panel;
+	if (msg->what == B_CANCEL) {
+		// Only delete the panel on cancel, which is sent even after a
+		// successful open or save.
+		delete panel;
 
-	BRefFilter* filter = NULL;
-	if (msg->FindPointer("filter", (void**)&filter) == B_OK)
-		delete filter;
+		BRefFilter* filter = NULL;
+		if (msg->FindPointer("filter", (void**)&filter) == B_OK)
+			delete filter;
+	}
 
 	jobject peer;
 	found = msg->FindPointer("peer", (void**)&peer);
@@ -120,7 +124,9 @@ ApplicationFilter::_HandleFileMessage(BMessage* msg)
 	}
 
 	fEnv->CallVoidMethod(peer, doneMethod, (jobjectArray)result);
-	fEnv->DeleteWeakGlobalRef(peer);
+
+	if (msg->what == B_CANCEL)
+		fEnv->DeleteWeakGlobalRef(peer);
 }
 
 
