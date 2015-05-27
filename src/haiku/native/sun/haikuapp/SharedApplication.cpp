@@ -106,7 +106,7 @@ SharedApplication::MessageReceived(BMessage* message)
             assert(status == B_OK);
 
             pthread_mutex_lock(&fAttachMutex);
-            jint result = vm->AttachCurrentThread((void**)&fEnv, NULL);
+            jint result = vm->AttachCurrentThreadAsDaemon((void**)&fEnv, NULL);
             assert(result == 0);
 
             pthread_cond_broadcast(&fAttachCond);
