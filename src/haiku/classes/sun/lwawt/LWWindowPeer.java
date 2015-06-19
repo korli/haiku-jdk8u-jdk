@@ -82,12 +82,12 @@ public class LWWindowPeer
 
     // Peers where all dragged/released events should come to,
     // depending on what mouse button is being dragged according to Cocoa
-    private static final LWComponentPeer<?, ?>[] mouseDownTarget = new LWComponentPeer<?, ?>[3];
+    private final LWComponentPeer<?, ?>[] mouseDownTarget = new LWComponentPeer<?, ?>[3];
 
     // A bitmask that indicates what mouse buttons produce MOUSE_CLICKED events
     // on MOUSE_RELEASE. Click events are only generated if there were no drag
     // events between MOUSE_PRESSED and MOUSE_RELEASED for particular button
-    private static int mouseClickButtons = 0;
+    private int mouseClickButtons = 0;
 
     private volatile boolean isOpaque = true;
 
