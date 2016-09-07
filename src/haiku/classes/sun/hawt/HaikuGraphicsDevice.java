@@ -93,6 +93,6 @@ public class HaikuGraphicsDevice extends GraphicsDevice {
         double[] resolution = new double[2];
         nativeGetScreenResolution(displayID, resolution);
         double res = (resolution[0] + resolution[1]) / 2;
-        return res == 0.0 ? res : 72.0;
+        return res != 0.0 ? res : 72.0;
     }
 }
