@@ -35,15 +35,13 @@ extern "C" {
 #include <MediaDefs.h>
 #include <MediaNode.h>
 #include <MediaRoster.h>
-#include <private/media/MediaRecorder.h>
+#include <MediaRecorder.h>
 #include <SoundPlayer.h>
 #include <TimeSource.h>
 
 #include <vector>
 
 #if USE_DAUDIO == TRUE
-
-using BPrivate::media::BMediaRecorder;
 
 AudioDeviceCache cache;
 
