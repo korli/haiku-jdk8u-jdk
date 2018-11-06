@@ -52,7 +52,7 @@ Java_java_net_SocketInputStream_init(JNIEnv *env, jclass cls) {
     IO_fd_fdID = NET_GetFileDescriptorID(env);
 }
 
-#if !defined(__solaris__)
+#if !defined(__solaris__) && !defined(__HAIKU__)
 static int NET_ReadWithTimeout(JNIEnv *env, int fd, char *bufP, int len, long timeout) {
     int result = 0;
     long prevtime = NET_GetCurrentTime(), newtime;
@@ -135,7 +135,7 @@ Java_java_net_SocketInputStream_socketRead0(JNIEnv *env, jobject this,
         bufP = BUF;
     }
 
-#if defined(__solaris__)
+#if defined(__solaris__) || defined(__HAIKU__)
     if (timeout) {
         nread = NET_Timeout(fd, timeout);
         if (nread <= 0) {
