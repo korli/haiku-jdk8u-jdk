@@ -47,7 +47,7 @@
    close subroutine does not return until the select call returns.
    ...
 */
-#if !defined(__solaris__)
+#if !defined(__solaris__) && !defined(__HAIKU__)
 extern int NET_Timeout(int s, long timeout);
 extern int NET_Timeout0(int s, long timeout, long currentTime);
 extern int NET_Read(int s, void* buf, size_t len);
