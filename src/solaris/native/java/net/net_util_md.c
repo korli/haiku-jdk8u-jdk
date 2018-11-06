@@ -1663,7 +1663,7 @@ NET_Wait(JNIEnv *env, jint fd, jint flags, jint timeout)
     return timeout;
 }
 
-#if !defined(__solaris__)
+#if !defined(__solaris__) && !defined(__HAIKU__)
 long NET_GetCurrentTime() {
     struct timeval time;
     gettimeofday(&time, NULL);
