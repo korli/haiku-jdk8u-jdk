@@ -65,6 +65,8 @@ public class DefaultFileSystemProvider {
             return createProvider("sun.nio.fs.MacOSXFileSystemProvider");
         if (osname.equals("AIX"))
             return createProvider("sun.nio.fs.AixFileSystemProvider");
+        if (osname.equals("Haiku"))
+            return createProvider("sun.nio.fs.HaikuFileSystemProvider");
         throw new AssertionError("Platform not recognized");
     }
 }
