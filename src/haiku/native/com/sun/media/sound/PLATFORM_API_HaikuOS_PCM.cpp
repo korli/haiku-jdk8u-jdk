@@ -227,6 +227,12 @@ void* DAUDIO_Open(INT32 mixerIndex, INT32 deviceID, int isSource,
                   int encoding, float sampleRate, int sampleSizeInBits,
                   int frameSize, int channels,
                   int isSigned, int isBigEndian, int bufferSizeInBytes) {
+
+    if (channels <= 0) {
+        ERROR1("ERROR: Invalid number of channels=%d!\n", channels);
+        return NULL;
+    }
+
     live_node_info nodeInfo;
     if (cache.GetDevice(mixerIndex, &nodeInfo) != B_OK)
         return NULL;
@@ -241,7 +247,7 @@ void* DAUDIO_Open(INT32 mixerIndex, INT32 deviceID, int isSource,
         // node's inputs
         EnumerateInputs(nodeInfo.node, &inputs, &formats);
     } else {
-        // We're looking for intput formats, so we want to get the
+        // We're looking for input formats, so we want to get the
         // node's outputs
         EnumerateOutputs(nodeInfo.node, &outputs, &formats);
     }
