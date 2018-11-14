@@ -277,6 +277,7 @@ final class UNIXProcess extends Process {
         switch (platform) {
             case LINUX:
             case BSD:
+            case HAIKU:
                 stdin = (fds[0] == -1) ?
                         ProcessBuilder.NullOutputStream.INSTANCE :
                         new ProcessPipeOutputStream(fds[0]);
