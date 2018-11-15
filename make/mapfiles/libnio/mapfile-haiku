@@ -75,6 +75,15 @@ SUNWprivate_1.1 {
                 Java_sun_nio_ch_IOUtil_makePipe;
                 Java_sun_nio_ch_IOUtil_randomBytes;
                 Java_sun_nio_ch_IOUtil_setfdVal;
+		Java_sun_nio_ch_HQueue_heventPoll;
+		Java_sun_nio_ch_HQueue_heventSize;
+		Java_sun_nio_ch_HQueue_objectOffset;
+		Java_sun_nio_ch_HQueue_typeOffset;
+		Java_sun_nio_ch_HQueue_eventsOffset;
+		Java_sun_nio_ch_HQueuePort_socketpair;
+		Java_sun_nio_ch_HQueuePort_interrupt;
+		Java_sun_nio_ch_HQueuePort_drain1;
+		Java_sun_nio_ch_HQueuePort_close0;
 		Java_sun_nio_ch_NativeThread_current;
 		Java_sun_nio_ch_NativeThread_init;
 		Java_sun_nio_ch_NativeThread_signal;
