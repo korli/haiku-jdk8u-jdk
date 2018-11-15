@@ -160,7 +160,10 @@ ifneq ($(OPENJDK_TARGET_OS),aix)
 endif
 
 ifneq ($(OPENJDK_TARGET_OS), haiku)
-  EXFILES += sun/nio/fs/HaikuFileStore.java \
+  EXFILES += sun/nio/ch/HaikuAsynchronousChannelProvider.java \
+      sun/nio/ch/HQueue.java \
+      sun/nio/ch/HQueuePort.java \
+      sun/nio/fs/HaikuFileStore.java \
       sun/nio/fs/HaikuFileSystem.java \
       sun/nio/fs/HaikuFileSystemProvider.java \
       sun/nio/fs/HaikuNativeDispatcher.java \
