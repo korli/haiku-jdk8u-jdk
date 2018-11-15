@@ -141,7 +141,9 @@ ifeq ($(OPENJDK_TARGET_OS), haiku)
       MagicFileTypeDetector.c \
       HaikuNativeDispatcher.c \
       UnixCopyFile.c \
-      UnixNativeDispatcher.c
+      UnixNativeDispatcher.c \
+      HQueue.c \
+      HQueuePort.c
 endif
 
 $(eval $(call SetupNativeCompilation,BUILD_LIBNIO, \
