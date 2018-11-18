@@ -51,6 +51,7 @@
 #   isWindows - true if OS is Windows
 #   isMacos   - true if OS is Macos X
 #   isAIX     - true if OS is AIX
+#   isHaiku   - true if OS is Haiku
 
 
 if [ -z "${TESTJAVA}" ]; then
@@ -89,6 +90,7 @@ isUnknownOS=false
 isWindows=false
 isMacos=false
 isAIX=false
+isHaiku=false
 
 OS=`uname -s`
 
@@ -122,6 +124,10 @@ case "$OS" in
   AIX )
     OS="AIX"
     isAIX=true
+    ;;
+  Haiku )
+    OS="Haiku"
+    isHaiku=true
     ;;
   Windows* )
     OS="Windows"

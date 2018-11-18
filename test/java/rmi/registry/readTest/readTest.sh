@@ -34,7 +34,7 @@ ARGS=""
 REGARGS=""
 
 case "$OS" in
-  SunOS | Linux | Darwin | AIX )
+  SunOS | Linux | Darwin | AIX | Haiku )
     PS=":"
     FS="/"
     CHMOD="${FS}bin${FS}chmod"
