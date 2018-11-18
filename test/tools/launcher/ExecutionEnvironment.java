@@ -74,7 +74,9 @@ public class ExecutionEnvironment extends TestHelper {
             ? "DYLD_LIBRARY_PATH"
             : TestHelper.isAIX
                     ? "LIBPATH"
-                    : "LD_LIBRARY_PATH";
+                    TestHelper.isHaiku
+                        ? "LIBRARY_PATH"
+                        : "LD_LIBRARY_PATH";
     static final String LD_LIBRARY_PATH_32 = LD_LIBRARY_PATH + "_32";
     static final String LD_LIBRARY_PATH_64 = LD_LIBRARY_PATH + "_64";
 
@@ -194,7 +196,7 @@ public class ExecutionEnvironment extends TestHelper {
 
         Map<String, String> env = new HashMap<>();
 
-        if (TestHelper.isLinux || TestHelper.isMacOSX || TestHelper.isAIX) {
+        if (TestHelper.isLinux || TestHelper.isMacOSX || TestHelper.isAIX || TestHelper.isHaiku) {
             for (String x : LD_PATH_STRINGS) {
                 String pairs[] = x.split("=");
                 env.put(pairs[0], pairs[1]);
