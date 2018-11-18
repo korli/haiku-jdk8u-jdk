@@ -38,6 +38,7 @@ SUNWprivate_1.1 {
 	    Java_sun_tools_attach_HaikuVirtualMachine_socket;
 	    Java_sun_tools_attach_HaikuVirtualMachine_read;
 	    Java_sun_tools_attach_HaikuVirtualMachine_write;
+	    Java_sun_tools_attach_HaikuVirtualMachine_getTempDir;
 	local:
 		*;
 };
