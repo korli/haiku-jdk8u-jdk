@@ -196,7 +196,7 @@ findPid()
 {
     # Return 0 if $1 is the pid of a running process.
     case "$osname" in
-        SunOS | AIX)
+        SunOS | AIX | Haiku)
             $psCmd | $grep '^ *'"$1 " > $devnull 2>&1
             res=$?
             ;;
@@ -284,7 +284,7 @@ EOF
          psCmd=ps
          jstack=jstack.exe
          ;;
-       SunOS | Linux | Darwin | AIX)
+       SunOS | Linux | Darwin | AIX | Haiku)
          transport=dt_socket
          address=
          devnull=/dev/null
