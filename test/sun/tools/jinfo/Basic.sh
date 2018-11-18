@@ -45,7 +45,7 @@ failed=0
 
 runSA=true
 
-if [ $isMacos = true -o $isAIX = true -o `uname -m` = ppc64 ]; then
+if [ $isMacos = true -o $isAIX = true -o $isHaiku = true -o `uname -m` = ppc64 ]; then
     runSA=false
 fi
 
